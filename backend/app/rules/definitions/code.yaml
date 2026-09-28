@@ -1,0 +1,129 @@
+# Code rulebook. severity_default is the single source of truth for a rule's
+# severity -- detectors look it up via app.rules.registry.severity_for(rule_id)
+# rather than hardcoding it, so an analyst can retune severity here without a
+# code change.
+#
+# detection_type is currently "deterministic" for every rule in this build
+# (the AI orchestration layer is a later build step). Rules flagged
+# "earmarked" below are the ones the architecture plan identifies as future
+# llm_assisted/hybrid candidates once that layer exists.
+
+- rule_id: JQA-CODE-001
+  category: Code
+  subcategory: Maintainability
+  title: "SELECT * detected"
+  description: "A dbt model selects all columns instead of an explicit list."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: code_checks.check_select_star
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Re-run JQA and confirm the affected production-facing model uses an explicit output column list, unless a documented exception is intentional."
+
+- rule_id: JQA-ARCH-001
+  category: Code
+  subcategory: Architecture
+  title: "Qualified database/schema reference detected"
+  description: "A model hardcodes a fully-qualified relation instead of using ref()/source()."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: code_checks.check_hardcoded_relation
+  applies_to: dbt_project
+  confidence_default: Medium
+  verification_template: "Confirm the qualified relation is intentional across environments and replace it with ref/source abstraction where appropriate."
+
+- rule_id: JQA-OPS-001
+  category: Code
+  subcategory: Operational Readiness
+  title: "Incremental model has no explicit unique_key"
+  description: "An incremental model has no unique_key, risking duplicate/incomplete reruns."
+  severity_default: Medium
+  detection_type: deterministic  # earmarked: llm_assisted once join-fanout context is available (see prompts/code/dbt_incremental_soundness)
+  detector_ref: code_checks.check_incremental_unique_key
+  applies_to: dbt_project
+  confidence_default: Medium
+  verification_template: "Confirm model grain and incremental strategy, then re-run the relevant model/tests to validate rerun and deduplication behaviour."
+
+- rule_id: JQA-MNT-001
+  category: Code
+  subcategory: Maintainability
+  title: "High SQL complexity detected"
+  description: "A model has an unusually high number of joins, CTEs, or lines."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: code_checks.check_complexity
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Review the model with its owner, document the accepted complexity or decompose it, then re-run JQA to confirm any intended structural change."
+
+- rule_id: JQA-DQ-001
+  category: Code
+  subcategory: Data Quality
+  title: "No explicit dbt model test coverage was detected"
+  description: "Aggregate test coverage across discovered SQL models is low."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: code_checks.check_test_coverage
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Re-run JQA after adding tests and confirm the expected test coverage is detected; separately validate any runtime quality controls."
+
+- rule_id: JQA-OPS-003
+  category: Code
+  subcategory: Operational Readiness
+  title: "Legacy/discontinued source naming detected"
+  description: "A source is named in a way that suggests it may be retired but still referenced."
+  severity_default: Low
+  detection_type: deterministic
+  detector_ref: code_checks.check_legacy_source_naming
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Check downstream references and deployment objects before retiring or renaming the legacy object."
+
+- rule_id: JQA-SEC-001
+  category: Code
+  subcategory: Security
+  title: "Hard-coded credential assignment"
+  description: "A keyword-matched credential assignment or bearer token was found in source."
+  severity_default: High
+  detection_type: deterministic
+  detector_ref: security_checks.scan_security
+  applies_to: any_text_file
+  confidence_default: High
+  verification_template: "Confirm the credential is revoked/rotated, no active copy remains in the repository or history, and the replacement uses the approved secret-management approach."
+
+- rule_id: JQA-SEC-002
+  category: Code
+  subcategory: Security
+  title: "Private-key material"
+  description: "A PEM-style private key block was found in source."
+  severity_default: Critical
+  detection_type: deterministic
+  detector_ref: security_checks.scan_security
+  applies_to: any_text_file
+  confidence_default: High
+  verification_template: "Confirm the credential is revoked/rotated, no active copy remains in the repository or history, and the replacement uses the approved secret-management approach."
+
+- rule_id: JQA-SEC-003
+  category: Code
+  subcategory: Security
+  title: "Credential-bearing connection string"
+  description: "A connection string embeds a plaintext password/user alongside a server/data source."
+  severity_default: High
+  detection_type: deterministic
+  detector_ref: security_checks.scan_security
+  applies_to: any_text_file
+  confidence_default: High
+  verification_template: "Confirm the credential is revoked/rotated, no active copy remains in the repository or history, and the replacement uses the approved secret-management approach."
+
+- rule_id: JQA-SEC-004
+  category: Code
+  subcategory: Security
+  title: "Suspicious high-entropy credential-like string"
+  description: "A high-entropy string near a credential-shaped keyword may be a secret that evades keyword checks."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: security_checks.scan_security
+  applies_to: any_text_file
+  confidence_default: Medium
+  verification_template: "Confirm the credential is revoked/rotated, no active copy remains in the repository or history, and the replacement uses the approved secret-management approach."

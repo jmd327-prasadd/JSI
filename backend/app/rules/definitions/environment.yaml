@@ -1,0 +1,79 @@
+# Environment rulebook.
+#
+# Per the v1 scope decision, Environment/connections analysis (live Snowflake
+# config, CI/CD *execution*, billing, orchestration) is deferred -- there are
+# no live connectors here. These rules are static-text checks over CI/CD
+# workflow YAML and source freshness config that ARE included in v1 because
+# they only require the uploaded zip, not a live connection.
+
+- rule_id: JQA-OPS-002
+  category: Environment
+  subcategory: Operational Readiness
+  title: "Operational sources have no declared dbt freshness configuration"
+  description: "Sources that look operationally important have no freshness block."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: environment_checks.check_source_freshness
+  applies_to: dbt_project
+  confidence_default: Medium
+  verification_template: "Confirm the actual ingestion SLA and configure source freshness checks where stale data detection is required."
+
+- rule_id: JQA-CICD-001
+  category: Environment
+  subcategory: CI/CD
+  title: "Multiple GitHub Actions workflow definitions detected"
+  description: "More than one workflow file makes the authoritative deployment path ambiguous."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: environment_checks.check_multiple_workflows
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Identify the authoritative workflow and document ownership/trigger responsibilities; validate the intended release path."
+
+- rule_id: JQA-CICD-002
+  category: Environment
+  subcategory: CI/CD
+  title: "GitHub Actions action input key uses unexpected casing"
+  description: "A workflow contains an uppercase `WITH:` key where `with:` is expected."
+  severity_default: High
+  detection_type: deterministic
+  detector_ref: environment_checks.check_workflow_with_casing
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Validate the workflow in GitHub Actions and confirm the action input is accepted by the runner."
+
+- rule_id: JQA-CICD-003
+  category: Environment
+  subcategory: CI/CD
+  title: "Deployment condition does not match configured branch trigger"
+  description: "A deploy job is gated on main but the workflow trigger doesn't list main."
+  severity_default: High
+  detection_type: deterministic
+  detector_ref: environment_checks.check_workflow_branch_mismatch
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Run the intended PR/merge path and confirm the deployment job is actually eligible on the authoritative branch."
+
+- rule_id: JQA-CICD-004
+  category: Environment
+  subcategory: CI/CD
+  title: "dbt CI dependency versions are not pinned"
+  description: "A workflow installs dbt-core/dbt-snowflake without a version constraint."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: environment_checks.check_unpinned_dbt_version
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Run CI on a clean runner and confirm the pinned dbt versions install and execute successfully."
+
+- rule_id: JQA-CICD-005
+  category: Environment
+  subcategory: Maintainability
+  title: "Workflow contains runner-specific absolute path"
+  description: "A workflow hardcodes a /home/runner/work/... path."
+  severity_default: Low
+  detection_type: deterministic
+  detector_ref: environment_checks.check_hardcoded_runner_path
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Run the workflow on the standard runner and confirm repository-relative or workspace-based paths work."

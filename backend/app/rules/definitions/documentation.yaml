@@ -1,0 +1,33 @@
+# Documentation rulebook.
+#
+# JQA-DOC-001/002 are deterministic coverage-percentage checks over dbt
+# schema.yml metadata (ported from the PoC). The richer "does this handover
+# doc section actually cover RCA/business context adequately" judgment
+# (DOC.SECTION_ADEQUACY.* rules, hybrid detection_type, judgment_ref into
+# prompts/documentation/section_adequacy) is added once the documentation
+# ingestion pipeline (pymupdf4llm/markitdown + section_extractor) and the AI
+# orchestration layer are built -- both are later build-order steps.
+
+- rule_id: JQA-DOC-001
+  category: Documentation
+  subcategory: Model Description Coverage
+  title: "Model metadata coverage is limited"
+  description: "A percentage of discovered dbt SQL models have no matching description in schema.yml."
+  severity_default: Medium
+  detection_type: deterministic
+  detector_ref: doc_checks.check_model_description_coverage
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Re-run JQA and confirm the prioritised production-facing models have matching descriptions in metadata."
+
+- rule_id: JQA-DOC-002
+  category: Documentation
+  subcategory: Source Description Coverage
+  title: "Source metadata descriptions are incomplete"
+  description: "One or more dbt sources have no source-level description."
+  severity_default: Low
+  detection_type: deterministic
+  detector_ref: doc_checks.check_source_description_coverage
+  applies_to: dbt_project
+  confidence_default: High
+  verification_template: "Re-run JQA and confirm critical sources have purpose/owner/operational context documented."
